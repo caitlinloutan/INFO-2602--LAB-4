@@ -110,6 +110,24 @@ def edit_todo_page(id):
   todos = Todo.query.all()
   todo = Todo.query.filter_by(id=id, user_id=current_user.id).first()
 
+  @app.route('/deleteTodo/<id>', methods=["GET"])
+  @jwt_required()
+  def delete_todo_action(id):
+    res = current_user.delete_todo(id)
+    if res == None:
+      flash('Invalid id or unauthorized')
+    else:
+      flash('Todo Deleted')
+    return redirect(url_for('todos_page'))
+
+  @app.route('/logout', methods=['GET'])
+  @jwt_required()
+  def logout_action():
+    flash('Logged Out')
+    response = redirect(url_for('login_page'))
+    unset_jwt_cookies(response)
+    return response
+
   if todo:
     return render_template('edit.html', todo=todo, current_user=current_user)
 
@@ -152,12 +170,34 @@ def login_action():
     response = redirect(url_for('login_page'))
   return response
 
+@app.route('/createTodo', methods=['POST'])
+@jwt_required()
+def create_todo_action():
+  data = request.form
+  current_user.add_todo(data['text'])
+  flash('Created')
+  return redirect(url_for('todos_page'))
 
+@app.route('/toggle/<id>', methods=['POST'])
+@jwt_required()
+def toggle_todo_action(id):
+  todo = current_user.toggle_todo(id)
+  if todo is None:
+    flash('Invalid id or unauthorized')
+  else:
+    flash(f'Todo { "done" if todo.done else "not done" }!')
+  return redirect(url_for('todos_page'))
 
-
-
-
-
+@app.route('/editTodo/<id>', methods=["POST"])
+@jwt_required()
+def edit_todo_action(id):
+  data = request.form
+  res = current_user.update_todo(id, data["text"])
+  if res:
+    flash('Todo Updated!')
+  else:
+    flash('Todo not found or unauthorized')
+  return redirect(url_for('todos_page'))
 
 if __name__ == "__main__":
   app.run(host='0.0.0.0', port=81)
